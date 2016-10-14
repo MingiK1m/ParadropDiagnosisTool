@@ -10,7 +10,7 @@
 
 while true; do
     # DO nothing
-    sleep(10);
+    sleep 10;
 done
 
 
