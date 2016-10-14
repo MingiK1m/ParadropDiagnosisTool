@@ -8,7 +8,7 @@
 # results.  You can do that directly from this bash script or call another
 # program that you write (e.g. in Python).
 
-/usr/local/bin/a.out
+/usr/local/bin/a.out > /tmp/a.log
 
 while true; do
     # DO nothing
