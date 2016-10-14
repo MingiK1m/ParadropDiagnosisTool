@@ -8,13 +8,13 @@ FROM paradrop/workshop
 # Install dependencies.  You can add additional packages here following the example.
 RUN apt-get update && apt-get install -y \
 #   <package> \
-    nginx
+    apache2
 
 # Install files required by the chute.
 #
 # ADD <path_inside_repository> <path_inside_container>
 #
-ADD chute/webpage/html/ /usr/share/nginx/
+ADD chute/webpage/html/ /var/www/html
 ADD chute/webpage/a.out /usr/local/bin/a.out
 ADD chute/run.sh /usr/local/bin/run.sh
 
