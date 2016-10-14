@@ -9,6 +9,11 @@
 # program that you write (e.g. in Python).
 
 /usr/local/bin/a.out
+while true; do
+    # DO nothing
+    sleep(10);
+done
+
 
 # If execution reaches this point, the chute will stop running.
 exit 0
