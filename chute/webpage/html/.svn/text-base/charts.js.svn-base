@@ -1,0 +1,416 @@
+/*
+ * Visualization initialization functions.
+ * Call these ONCE after the page and prerequisite JavaScript load.
+ */
+
+// Initialize the airtime visualization
+function initAirtime() {
+	utilChartData = google.visualization.arrayToDataTable([
+			  ['Channel', 'WiFi', 'Non-WiFi'],
+			  ['1',  0,0],
+			  ['2',  0,0],
+			  ['3',  0,0],
+			  ['4',  0,0],
+			  ['5',  0,0],
+			  ['6',  0,0],
+			  ['7',  0,0],
+			  ['8',  0,0],
+			  ['9',  0,0],
+			  ['10', 0,0],
+			  ['11', 0,0],
+			  ['12', 0,0],
+			]);
+	
+	utilOptions = {
+        title: 'Airtime Utilization',
+        titleTextStyle: textFormat,
+        hAxis: {title: 'Wi-Fi Channel', textStyle: textFormat, titleTextStyle: textFormat},
+		vAxis: {title: 'Utilization (%)', textStyle: textFormat, titleTextStyle: textFormat, 
+			minvalue: 0, maxValue: 100},
+		legend: {
+		  	textStyle: textFormat,
+		  	position: 'none'
+		},
+//		width: $("#utilization").width(),
+//		height: $("#utilization").height(),
+		animation: {
+			duration: 500,
+		    easing: 'out',
+    	},
+    	backgroundColor: '#222',
+    	isStacked: true
+    };
+
+	utilChart = new google.visualization.ColumnChart(document.getElementById('utilization'));
+}
+
+// Initialize the devices visualization
+function initDevices() {
+	data = new google.visualization.DataTable();
+	data.addColumn('string', 'Serial');
+	data.addColumn('string', 'Device');
+	data.addColumn('string', 'Start');
+	data.addColumn('string', 'End');
+	data.addColumn('string', 'Duration');
+	data.addColumn('string', 'Sig Str');
+	data.addColumn('string', 'Sub Band Freq');
+	data.addColumn('string', 'Freq Range');
+	
+	// Define a StringFilter control for the 'Serial' column
+	var serialFilter = new google.visualization.ControlWrapper({
+		'controlType': 'StringFilter',
+		'containerId': 'serialFilter',
+		'options': { 'filterColumnLabel': 'Serial' },
+	});
+
+//	serialFilter.setState(serialFilterState);
+
+	// Define a StringFilter control for the 'Device' column
+	var deviceFilter = new google.visualization.ControlWrapper({
+		'controlType': 'StringFilter',
+		'containerId': 'deviceFilter',
+		'options': { 'filterColumnLabel': 'Device' },
+	});
+
+//	serialFilter.setState(serialFilterState);
+
+	// Define a table visualization
+	devOptions = {
+		showRowNumber: true,
+		alternatingRowStyle: false,
+		cssClassNames: {tableRow: 'googletr', hoverTableRow: 'googlehover', headerRow: 'googleheader', selectedTableRow: 'googleselected', tableCell: 'googlecell', headerCell: 'googlecell'},
+		width: $("#devgtable").width(),
+		height: $("#devgtable").height(),
+		sortAscending: false,
+		sortColumn: 3
+	};
+	table = new google.visualization.Table(document.getElementById('devgtable'));
+/*
+	var readyListener = google.visualization.events.addListener(table, 'ready', onReady);
+
+	google.visualization.events.addListener(serialFilter, 'statechange', serialHandler);
+
+	function serialHandler(e) {
+		serialFilterState = serialFilter.getState();
+	}
+
+	function onReady() {
+		google.visualization.events.removeListener(readyListener);
+		google.visualization.events.addListener(table.getChart(), 'sort', sortHandler);
+		google.visualization.events.addListener(table.getChart(), 'page', pageHandler); 
+	}
+
+	function sortHandler(e) {
+		tableSortAscending = e.ascending;
+		tableSortColumn = e.column;
+	}
+
+	function pageHandler(e) {
+		tablePage = e.page;
+	}
+*/
+}
+
+// Initialize the networks visualization
+function initNetworks() {
+	wfdata = new google.visualization.DataTable();
+	wfdata.addColumn('string', 'SSID');
+	wfdata.addColumn('string', 'Mac Address');
+	wfdata.addColumn('string', 'Channel');
+	wfdata.addColumn('string', 'Signal Strength');
+	
+	wfOptions = {
+		showRowNumber: true,
+		alternatingRowStyle: false,
+		cssClassNames: {tableRow: 'googletr', hoverTableRow: 'googlehover', headerRow: 'googleheader', selectedTableRow: 'googleselected', tableCell: 'googlecell', headerCell: 'googlecell'},
+		width: $("#wifitable").width(),
+		height: $("#wifitable").height(),
+		sortColumn: 0
+	};
+
+	wfTable = new google.visualization.Table(document.getElementById('wifitable'));
+}
+
+// Initialize the waterfall visualization
+function initWaterfall() {
+	var riv = document.getElementById('river');
+	var wav = document.getElementById('waves');
+	var wf = document.getElementById('wfchart');
+	
+	if (riv.getContext && wav.getContext && wf.getContext) {
+	    river = riv.getContext('2d');
+	    waves = wav.getContext('2d');
+	    waterfall = wf.getContext('2d');
+	    river.font = "8pt Arial";
+	}
+}
+
+
+/*
+ * Visualization redraw functions.
+ * Call these whenever the view changes.
+ */
+
+// Resize and repaint the airtime visualization
+function redrawAirtime() {
+	utilOptions.width = $("#maincol").width();
+	utilOptions.height = $("#maincol").height() - 40;
+	utilChart.draw(utilChartData, utilOptions);
+}
+
+// Resize and repaint the devices table
+function redrawDevices() {
+	devOptions.width = $("#maincol").width();
+	devOptions.height = $("#maincol").height() - 40;
+	table.draw(data, devOptions);
+}
+
+// Resize and repaint the networks table
+function redrawNetworks() {
+	wfOptions.width = $("#maincol").width();
+	wfOptions.height = $("#maincol").height() - 40;
+	wfTable.draw(wfdata, wfOptions);
+}
+
+// Resize and relabel the Waterfall visualization
+function redrawWaterfall() {
+	// For canvas elements, set the HTML width/height attributes, not the CSS properties
+	$("#river").attr("width", $("#leftcol").width() - 20)
+			   .attr("height", $("#leftcol").height());
+	$("#waves").attr("width", $("#maincol").width())
+			   .attr("height", 150);
+	// .height() apparently returns 0 for potentially invisible elements
+	$("#wfchart").attr("width", $("#maincol").width())
+				 .attr("height", $("#maincol").height() - 40 - $("#waves").height());
+
+	var wfwidth = $("#waves").width() - 70; // 60px gutter for labels on right side
+
+	waves.textAlign = "center";
+	waves.font = "12pt Arial";
+	waves.fillStyle = "rgb(191,191,191)";
+	for(i=1;i<=11;i++)
+		waves.fillText(i*5,(i-.1)*(wfwidth/11.2),149);
+	waves.textAlign = "left";
+	waves.font = "8pt Arial";
+	for(i=30; i<=110;i+=20) {
+		waves.fillText("-"+i+" dBm",wfwidth+10,i*1.5-35);
+	}
+	waterfall.fillStyle = "rgb(191,0,0)";
+	waterfall.fillRect(wfwidth+2,0,2,300);
+}
+
+
+/*
+ * Visualization rendering functions.
+ * Call these whenever new data arrives.
+ */
+
+// Update the utilization chart with new data	
+function drawUtil(utilData) {
+	utilChartData = google.visualization.arrayToDataTable([
+	  ['Channel', 'WiFi', 'Non-WiFi'],
+	  ['1',  utilData.util[0], utilData.util[1]],
+	  ['2',  utilData.util[2], utilData.util[3]],
+	  ['3',  utilData.util[4], utilData.util[5]],
+	  ['4',  utilData.util[6], utilData.util[7]],
+	  ['5',  utilData.util[8], utilData.util[9]],
+	  ['6',  utilData.util[10], utilData.util[11]],
+	  ['7',  utilData.util[12], utilData.util[13]],
+	  ['8',  utilData.util[14], utilData.util[15]],
+	  ['9',  utilData.util[16], utilData.util[17]],
+	  ['10',  utilData.util[18], utilData.util[19]],
+	  ['11',  utilData.util[20], utilData.util[21]],
+	  ['12',  utilData.util[22], utilData.util[23]],
+	]);
+    utilChart.draw(utilChartData, utilOptions);
+}
+
+// Update the devices table with new data
+function drawVisualization(deviceData) {
+	var i = data.getNumberOfRows();
+	var j = 0;
+
+	while(j < deviceData.dev.length) {
+		data.addRows(1);
+		data.setCell(i, 0, deviceData.dev[j].toString());
+		data.setCell(i, 1, deviceData.dev[j + 1].toString());
+		data.setCell(i, 2, deviceData.dev[j + 2].toString());
+		data.setCell(i, 3, deviceData.dev[j + 3].toString());
+		data.setCell(i, 4, deviceData.dev[j + 4].toString());
+		data.setCell(i, 5, deviceData.dev[j + 5].toString());
+		data.setCell(i, 6, deviceData.dev[j + 6].toString());
+		data.setCell(i, 7, deviceData.dev[j + 7].toString());
+		i++;
+		j = j + 8;
+	}
+	table.draw(data, devOptions);
+}
+
+// Update the networks table with new data
+function drawTable(wifiData) {
+	if(wifiData !== undefined && wifiData.data !== undefined) {
+		wfdata.addRows([[wifiData.data[0].toString(), wifiData.data[1].toString(), wifiData.data[2].toString(), wifiData.data[3].toString()]]);
+		wfTable.draw(wfdata, wfOptions);
+	}
+}
+
+// Update the sidebar waterfall
+function drawRiver(data) {
+	time_count = (time_count + 1) % 15;
+	if ($("#river").height() < 5) return;
+
+	var width = $("#river").width(); // Full width of canvas
+	var rvwidth = width - 75; // Gutter for timestamps
+	var rvheight = $("#river").height(); // Height of river
+
+	// Push down old data
+	if (rivimg != undefined)
+		river.putImageData(rivimg,0,5);
+
+	// Draw in the new data
+	for(i=0;i<56;i++) {
+		//river.fillStyle = "rgb(0," + (255 - 2*data.ch[i]) + ",0)";
+		hue = (data.ch[i] > 75 ? 120 : (data.ch[i] > 55 ? 60 : 0));
+		river.fillStyle = "hsl(" + hue + ", 100%, " + ((130 - data.ch[i]) / 2) + "%)";
+		river.fillRect(rvwidth/56*i+1,1,rvwidth/56,5);
+	}
+	
+	// Erase remaining old timestamp
+	river.fillStyle="#222";
+	river.fillRect(rvwidth,0,90,5);
+
+	if (time_count == 0) { // Draw key timestamp
+		river.fillRect(rvwidth+5,0,90,10);
+		river.fillStyle="rgb(255,255,255)";
+		river.fillText(data.timestamp,rvwidth+5,8);
+	}
+
+	// Take a snapshot of current data
+	rivimg = river.getImageData(0,0,width,rvheight);
+
+	if (time_count != 0) { // Draw non-key timestamp
+		river.fillRect(rvwidth+5,0,90,10);
+		river.fillStyle="rgb(255,255,255)";
+		river.fillText(data.timestamp,rvwidth+5,8);
+	}
+
+	river.fillStyle = "rgb(191,0,0)";
+	river.fillRect(rvwidth+1,0,2,150);
+}
+
+// Update the main waterfall
+function drawWaterfall(data) {
+	if ($("#wfchart").height() < 5) return;
+	var width = $("#wfchart").width(); // Full canvas width
+	var wfwidth = width - 70; // 60px gutter for labels on right side
+	var wfheight = $("#wfchart").height(); // Height of waterfall
+
+	// Push down old data
+	if (wfimg != undefined)
+		waterfall.putImageData(wfimg,0,wfheight/30);
+
+	// Draw in the new data
+	for(i=0;i<56;i++) {
+		//waterfall.fillStyle = "rgb(0," + (255 - 2*data.ch[i]) + ",0)";
+		hue = (data.ch[i] > 75 ? 120 : (data.ch[i] > 55 ? 60 : 0));
+		waterfall.fillStyle = "hsl(" + hue + ", 100%, " + ((130 - data.ch[i]) / 2) + "%)";
+		waterfall.fillRect(wfwidth/56*i+1,1,wfwidth/56,wfheight/30);
+	}
+
+	// Erase remaining old timestamp
+	waterfall.fillStyle="#222";
+	waterfall.fillRect(wfwidth+5,0,90,wfheight/30);
+
+	if (time_count == 0) { // Draw key timestamp
+		waterfall.fillRect(wfwidth+5,0,90,10);
+		waterfall.fillStyle="rgb(255,255,255)";
+		waterfall.fillText(data.timestamp,wfwidth+10,8);
+	}
+
+	// Take a snapshot of current data
+	wfimg = waterfall.getImageData(0,0,width,wfheight);
+
+	if (time_count != 0) { // Draw non-key timestamp
+		waterfall.fillRect(wfwidth+5,0,90,10);
+		waterfall.fillStyle="rgb(255,255,255)";
+		waterfall.fillText(data.timestamp,wfwidth+10,8);
+	}
+
+//	waterfall.fillStyle = "rgb(191,0,0)";
+//	waterfall.fillRect(rvwidth+1,0,2,150);
+}
+
+var rivimg;
+var wfimg;
+
+// Update the main waterfall visualization
+function drawWaves(data) {
+	lastData = data;
+	if ($("#waves").height() < 5) return;
+    
+    // Calculate stats
+    var fMin = new Array();
+    var fMax = new Array();
+    var fMean = new Array();
+   	frameData[fIndex] = JSON.parse(JSON.stringify(data.ch));
+   	fIndex = (fIndex + 1) % 30;
+   	fCount = Math.min(fCount + 1, 30);
+
+    for(i=0;i<56;i++) {
+    	fMin[i] = 30; // CLosest to 127
+    	fMax[i] = 110; // Closest to 0
+    	fMean[i] = 0;
+    	for(j=0;j<fCount;j++) {
+    		jj = j;
+    		fMin[i] = Math.max(frameData[jj][i], fMin[i]);
+    		fMax[i] = Math.min(frameData[jj][i], fMax[i]);
+    		fMean[i] = Math.min(frameData[jj][i], 110) * 1/(j+1) + fMean[i] * (1 - 1/(j+1));
+    	}
+    	fMin[i] = Math.min(fMin[i], 110);
+    	//fMax[i] = Math.max(fMin[i], 0);
+    }
+    
+    // A few useful numbers...
+    var wfwidth = $("#waves").width() - 70; // 60px gutter for labels on right side
+    var wvtop = 7; // Vertical position of 0db (to make room for labels)
+    
+    // Erase old data
+    waves.fillStyle = "#222";
+    waves.fillRect(0,0,wfwidth,128 + wvtop);
+    waves.fillStyle = "rgba(0,0,191,.7)";
+    waves.strokeStyle = "rgb(63,127,255)";
+    
+    // Draw in the new data
+    // Maximum values in past second
+    waves.beginPath();
+    waves.moveTo(0,127+wvtop);
+    //ctx2.lineTo(0, (lastData.ch[0] * 4/5) + (data.ch[0] * 1/5));
+    waves.lineTo(0, (fMax[0]-30)*1.5+wvtop);
+    for(i=0;i<56;i++) {
+		waves.lineTo(wfwidth/56*(i+.5), (fMax[i]-30)*1.5+wvtop);
+    }
+    waves.lineTo(wfwidth, (fMax[55]-30)*1.5+wvtop);
+    waves.lineTo(wfwidth,127+wvtop);
+    waves.fill();
+    
+    // Average values in past second
+    waves.beginPath();
+    waves.moveTo(0, (fMean[0]-30)*1.5+wvtop);
+    for(i=0;i<56;i++) {
+		lastData.ch[i] = (lastData.ch[i] * 4/5) + (data.ch[i] * 1/5);
+		waves.lineTo(wfwidth/56*(i+.5), (fMean[i]-30)*1.5+wvtop);
+    }
+    waves.lineTo(wfwidth, (fMean[55]-30)*1.5+wvtop);
+    waves.stroke();
+    
+    // Minimum values in past second
+    waves.fillStyle = "rgba(0,0,0,.3)";
+    waves.beginPath();
+    waves.moveTo(0,127+wvtop);
+    waves.lineTo(0, (fMin[0]-30)*1.5+wvtop);
+    for(i=0;i<56;i++)
+		waves.lineTo(wfwidth/56*(i+.5), (fMin[i]-30)*1.5+wvtop);
+    waves.lineTo(wfwidth, (fMin[55]-30)*1.5+wvtop);
+    waves.lineTo(wfwidth,127+wvtop);
+    waves.fill();
+}

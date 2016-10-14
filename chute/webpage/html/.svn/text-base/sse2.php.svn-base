@@ -1,0 +1,66 @@
+<?php
+session_start();
+if (isset($_GET['live']))
+	header('Content-Type: text/event-stream');
+header('Cache-Control: no-cache');
+set_time_limit(600);
+
+// Sends a message from the specified source to the server.
+// Data from different sources can be handled differently on the HTML page.
+function sendMsg($sensor, $msg) {
+  echo "event: $sensor" . PHP_EOL;
+  echo "data: $msg" . PHP_EOL;
+  echo PHP_EOL;
+  ob_flush();
+  flush();
+}
+
+// Use an infinite loop to keep the connection to the client open
+$datafile = @fopen("fft_debug_aug13_gfloor_fhss_3941_3016","r");
+if (!$datafile) return;
+
+if (isset($_SESSION['offset']))
+	fseek($datafile, $_SESSION['offset']);
+else
+	$_SESSION['offset'] = 0;
+ 
+$n = 2000;
+$out = "";
+while($n > 0) {
+	$values = "";
+	$dataline = fgets($datafile);
+	$_SESSION['offset'] += strlen($dataline);
+	$values = explode(",", $dataline, 17);
+	$ts = trim($values[5], "UL");
+	$points = trim($values[16], ", \n");
+
+	if (isset($_GET['live'])) {
+		list($usec, $sec) = explode(" ", microtime());
+		$tsf = date("i:s", $sec).".".substr("00000".$usec, -6);
+//		$tsf = date("i:s.u");
+		sendMsg("channel", "{ \"ch\": [$points], \"timestamp\": \"$tsf\" }");
+		usleep(33000); // Approx. 30fps?
+		
+		$n++;
+		if ($n % 15 == 0) {
+			sendMsg("devices", "{ \"dev\": [\"ser\",\"type\",\"start\",\"end\",\"duration\",\"sigstr\",\"subbandfreq\",\"freqrange\"] }");
+		}
+		if ($n % 300 == 0) {
+			sendMsg("utilization", "{ \"util\": [0,100,5,95,10,90,15,85,20,80,25,75,30,70,35,65,40,60,45,55,50,50,55,45]}");
+		}
+		if ($n % 300 == 100) {
+			sendMsg("wifi", "{ \"data\": [\"ssid\",\"Mac_Addr\",\"Channel\",\"Signal Strength\"] }");
+		}
+	} else {
+		$min = substr("0".floor((2000-$n)/1800), -2);
+		$sec = substr("0".floor(((2000-$n)%1800)/30), -2);
+		$fra = substr("00000".floor((2000-$n)%30 * 1000000/30), -6);
+		$tsf = "$min:$sec.$fra";
+		$out = $out."{ \"ch\": [$points], \"timestamp\": \"$tsf\" }".($n == 1 ? "" : ",").PHP_EOL;
+		$n--;
+	}
+}
+fclose($datafile);
+if (!isset($_GET['live']))
+	echo "{ \"data\": [ $out ] }";
+?>

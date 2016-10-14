@@ -1,0 +1,191 @@
+body {
+	background-color: #333;
+	color: white;
+	margin: 0px;
+	font-family: Helvetica, Arial, sans-serif;
+	font-size: 16px;
+	overflow: hidden;
+}
+
+/* Layout stuff */
+#toolbar {
+	height: 30px;
+	padding: 8px 10px;
+	text-align: center;
+}
+
+#maincol, #leftcol {
+	background-color: #222;
+	margin: 10px;
+	position: absolute;
+	top: 40px;
+	bottom: 0px;
+}
+
+/* On small screens, hide the left column */
+#leftcol {
+	display: none;
+}
+
+#maincol {
+	left: 0px;
+	right: 0px;
+}
+
+#maincol > div {
+	display: none;
+}
+
+/* On larger screens, show the left column */
+@media (min-width:800px) {
+	#leftcol {
+		display: block;
+		left: 0px;
+		width: 320px;
+	}
+	
+	#splitter {
+		position: absolute;
+		right: 0px;
+		top: 0px;
+		bottom: 0px;
+		width: 20px;
+		cursor: e-resize;
+		background: url(images/grip.png) #333 no-repeat;
+		background-position: center center;
+	}
+
+	#maincol {
+		left: 320px;
+		right: 0px;
+	}
+}
+
+.left {
+	float: left;
+}
+
+#maincol > div > div:first-child {
+	position: absolute;
+	top: 0px;
+	left: 0px;
+	right: 0px;
+	bottom: 40px;
+}
+
+.viewctl {
+	position: absolute;
+	left: 0px;
+	right: 0px;
+	bottom: 0px;
+	height: 30px;
+	padding-top: 10px;
+	background-color: #333;
+}
+
+/* Toolbar appearance */
+h1 {
+	font-size: 20pt;
+	margin: 0px;
+	padding-top: 2px;
+	float: right;
+}
+
+#toolbar span {
+	background-color: #222;
+	margin-right: 5px;
+	display: inline-block;
+}
+
+#toolbar label {
+    background-color:#444;
+    display: inline-block;
+    margin: 1px;
+    margin-right: 0px;
+    padding: 5px 10px;
+    cursor: pointer;
+}
+
+#toolbar label:hover {
+	background-color: #555;
+}
+
+#toolbar label:last-child {
+    margin-right: 1px;
+}
+
+#toolbar input[type=checkbox], #toolbar input[type=radio] {
+    display: none;
+}
+
+/* a + b means a imediately followed by b */
+#toolbar input:checked + label {
+    background-color: #458;
+}
+
+/* Google table styles */
+.googletr {
+	background-color: #222;
+	color: white;
+}
+
+.googlehover {
+	background-color: #555;
+}
+
+.googleselected {
+	background-color: #458;
+}
+
+.googleheader {
+	background-color: #444;
+	font-weight: bold;
+}
+
+.googlecell {
+	border: 1px solid #777;
+}
+
+.labels > span {
+	border: 1px solid #777;
+	display: inline-block;
+	width: 1em;
+	height: 1em;
+	margin-left: 20px;
+	margin-right: 5px;
+	vertical-align: text-top;
+}
+
+.labels > span:first-child {
+	margin-left: 0px;
+}
+
+.scroll {
+	overflow-x: hidden;
+	overflow-y: auto;
+}
+
+input[type=text] {
+	background-color: #ccc;
+	border: 1px solid #222;
+	font-size: 1em;
+}
+
+/* Waterfall styles */
+.legend > span {
+	border: 1px solid #777;
+	display: inline-block;
+	width: 44px;
+	height: 12px;
+	font-size: 8pt;
+	margin-top: 1.2em;
+	position: relative;
+}
+.legend span span {
+	position: absolute;
+	bottom: 100%;
+	color: white;
+	left: 0%;
+	right: 0%;
+	text-align: center;
+}

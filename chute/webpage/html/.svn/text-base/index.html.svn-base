@@ -1,0 +1,677 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<title>AirShark</title>
+<link rel="stylesheet" href="jquery-ui-1.8.18.custom.css" />
+<style>
+body {
+	background-color: #333;
+	color: white;
+}
+canvas {
+	background-color: black;
+	border: 5px solid black;
+	display: block;
+}
+.legend > span {
+	border: 1px solid #777;
+	display: inline-block;
+	width: 44px;
+	height: 12px;
+	font-size: 8pt;
+	margin-top: 1.2em;
+	position: relative;
+}
+.legend span span {
+	position: absolute;
+	bottom: 100%;
+	color: white;
+	left: 0%;
+	right: 0%;
+	text-align: center;
+}
+.legend {
+	background-color: #222;
+	font-family: Arial, Helvetica, sans-serif;
+	color: white;
+	margin-left: 320px;
+	height: 30px;
+	padding: 3px;
+	margin-top: 4px;
+}
+#slider-range {
+	float: left;
+	height: 490px;
+	width: 6px;
+	margin: 10px 3px;
+}
+.ui-slider-vertical .ui-slider-handle {
+	width: 16px;
+}
+button, label {
+	height: 32px;
+}
+#toolbar {
+	margin-bottom: 3px;
+}
+#wrapper {
+	width: 950px;
+	padding: 5px;
+	margin: 0px auto;
+	border-radius: 6px;
+	background-color: #222;
+	border: 1px solid silver;
+}
+h1 {
+	font-family: Verdana, Arial, sans-serif;
+	font-size: 24px;
+	float: right;
+	margin: 0px;
+	padding-right: 8px;
+}
+#maincol {
+	color: black;
+}
+</style>
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type="text/javascript" src="js/jquery-ui-1.8.18.custom.min.js"></script>
+<script type='text/javascript' src='https://www.google.com/jsapi'></script>
+<script type="text/javascript">
+var source;
+var replayData;
+var time_count = 0;
+var frameData = new Array();
+var fCount = 0;
+var fIndex = 0;
+
+function getData() {
+	$.getJSON('sse2.php', function(d) {
+		replayData = d.data;
+		replay();
+	});
+}
+
+function init() {
+	if (!!window.EventSource) {
+		// Stream new data from the server
+		source = new EventSource('sse2.php?live');
+		// When new data is received... display it
+		// Waterfall
+		source.addEventListener('channel', function(e) {
+			var data = JSON.parse(e.data);
+			draw(data);
+		}, false);
+		// Table
+		source.addEventListener('devices', function(e) {
+			var deviceData = JSON.parse(e.data);
+			drawVisualization(deviceData);
+		}, false);
+		// utilization chart
+		source.addEventListener('utilization', function(e) {
+			var utilData = JSON.parse(e.data);
+			drawUtil(utilData);
+		}, false);
+		source.addEventListener('wifi', function(e) {
+			var wifiTableData = JSON.parse(e.data);
+			drawTable(wifiTableData);
+		}, false);
+	}
+}
+
+function draw(data){ 
+  // The canvas elements to draw on 
+  var canvas = document.getElementById('waterfall');
+  var bar = document.getElementById('bar');
+  if (canvas.getContext && bar.getContext){  
+    var ctx = canvas.getContext('2d');
+    var ctx2 = bar.getContext('2d');
+    
+    lastData = data;
+    
+    // Fade out old data
+    ctx2.fillStyle = "rgb(0,0,0)";
+    ctx2.fillRect(0,0,560,128);
+    ctx2.fillStyle = "rgba(0,0,191,.7)";
+    ctx2.strokeStyle = "rgb(63,127,255)";
+    ctx.fillStyle = "rgb(0,0,0)";
+    ctx.fillRect(226,0,2,150);    
+    
+    // Push down old data
+    if (time_count == 1) {
+    	ctx.fillStyle="rgb(0,0,0)";
+		ctx.fillRect(224,0,90,5);
+    	ctx3.fillStyle="rgb(0,0,0)";
+		ctx3.fillRect(565,0,90,10);
+    } else if (time_count != 0) {
+		ctx.fillStyle="rgb(0,0,0)";
+		ctx.fillRect(224,0,90,10);
+    	ctx3.fillStyle="rgb(0,0,0)";
+		ctx3.fillRect(565,0,90,10);
+
+    }
+    img = ctx.getImageData(0,0,284,495);
+    ctx.putImageData(img,0,5);
+    img3 = ctx3.getImageData(0,0,620,290);
+    ctx3.putImageData(img3,0,10);
+    ctx.fillStyle = "rgb(191,0,0)";
+    ctx.fillRect(226,0,2,150);
+    
+    // Calculate stats
+    var fMin = new Array();
+    var fMax = new Array();
+    var fMean = new Array();
+   	frameData[fIndex] = JSON.parse(JSON.stringify(data.ch));
+   	fIndex = (fIndex + 1) % 30;
+   	fCount = Math.min(fCount + 1, 30);
+
+    for(i=0;i<56;i++) {
+    	fMin[i] = 0; // CLosest to 127
+    	fMax[i] = 127; // Closest to 0
+    	fMean[i] = 0;
+    	for(j=0;j<fCount;j++) {
+    		jj = j;
+    		fMin[i] = Math.max(frameData[jj][i], fMin[i]);
+    		fMax[i] = Math.min(frameData[jj][i], fMax[i]);
+    		fMean[i] = frameData[jj][i] * 1/(j+1) + fMean[i] * (1 - 1/(j+1));
+    	}
+    	fMin[i] = Math.min(fMin[i], 127);
+    	//fMax[i] = Math.max(fMin[i], 0);
+    }
+    
+    // Draw in the new data
+    // Current values
+    for(i=0;i<56;i++) {
+      ctx.fillStyle = "rgb(0," + (255 - 2*data.ch[i]) + ",0)";
+      ctx.fillRect(4*i+1,1,3,4);
+      ctx3.fillStyle = "rgb(0," + (255 - 2*data.ch[i]) + ",0)";
+      ctx3.fillRect(10*i+1,1,9,9);
+    }
+    
+    // Maximum values in past second
+    ctx2.beginPath();
+    ctx2.moveTo(0,127);
+    //ctx2.lineTo(0, (lastData.ch[0] * 4/5) + (data.ch[0] * 1/5));
+    ctx2.lineTo(0, fMax[0]);
+    for(i=0;i<56;i++) {
+	  ctx2.lineTo(10*i+5, fMax[i]);
+    }
+    ctx2.lineTo(560, fMax[55]);
+    ctx2.lineTo(560,127);
+    ctx2.fill();
+    
+    // Average values in past second
+    ctx2.beginPath();
+    ctx2.moveTo(0, fMean[0]);
+    for(i=0;i<56;i++) {
+      ctx.fillStyle = "rgb(0," + (255 - 2*data.ch[i]) + ",0)";
+      ctx.fillRect(4*i+1,1,3,4);
+	  lastData.ch[i] = (lastData.ch[i] * 4/5) + (data.ch[i] * 1/5);
+	  ctx2.lineTo(10*i+5, fMean[i]);
+    }
+    ctx2.lineTo(559, fMean[55]);
+    ctx2.stroke();
+    
+    // Minimum values in past second
+    ctx2.fillStyle = "rgba(0,0,0,.3)";
+    ctx2.beginPath();
+    ctx2.moveTo(0,127);
+    ctx2.lineTo(0, fMin[0]);
+    for(i=0;i<56;i++)
+	  ctx2.lineTo(10*i+5, fMin[i]);
+    ctx2.lineTo(560, fMin[55]);
+    ctx2.lineTo(560,127);
+    ctx2.fill();
+
+	
+//	ctx.fillStyle="rgb(0,0,0)";
+//	ctx.fillRect(224,0,90,6);
+//    if (time_count == 0) {
+	  ctx.fillStyle="rgb(255,255,255)";
+	  ctx.fillText(data.timestamp,230,8);
+	  ctx3.fillStyle="rgb(255,255,255)";
+	  ctx3.fillText(data.timestamp.substr(3),565,8);
+
+//	}
+	time_count = (time_count + 1) % 15;
+  }  
+}
+
+function stopStream() {
+	source.close();
+}
+
+function replay() {
+	if (!replayData) {
+		replayIndex = 0;
+		getData();
+		return;
+	}
+	fCount = 0;
+	fIndex = 0;
+	replayIndex = -$("#slider-range").slider( "option", "value");
+	interval = self.setInterval("replayPoint()", 33);
+}
+
+function replayPoint() {
+	if (replayIndex >= 2000) {
+		pauseReplay();
+		replayIndex = 0;
+		$("#slider-range").slider( "option", "value", 0);
+		return;
+	}
+	$("#slider-range").slider( "option", "value", -replayIndex);
+;
+	draw(replayData[replayIndex]);
+	replayIndex++;
+}
+
+function pauseReplay() {
+	clearInterval(interval);
+}
+
+function play() {
+	if ($("#stream").is(":checked"))
+		init();
+	else
+		replay();
+}
+
+function pause() {
+	if ($("#stream").is(":checked"))
+		stopStream();
+	else
+		pauseReplay();
+}
+
+var interval;
+var replayIndex = 0;
+var lastData = 0;
+
+$(document).ready(function() {
+	$("#toolbar input").button();
+	$("#toolbar span").buttonset();
+	$("#play").button({
+			text: false,
+			icons: {
+				primary: "ui-icon-play"
+			}
+		})
+		.change(function() {
+			var options;
+			if ( $( this ).is(":checked")) {
+				options = {
+					icons: {
+						primary: "ui-icon-pause"
+					}
+				};
+				play();
+			} else {
+				options = {
+					icons: {
+						primary: "ui-icon-play"
+					}
+				};
+				pause();
+			}
+			$( this ).button( "option", options );
+		});
+	$("#stream, #replay").change(function() {
+		//if ($("#play").is(":checked")) {
+			//pause();
+		//}
+		if ($("#stream").is(":checked")) {
+			$("#slider-range").hide();
+			pauseReplay();
+		} else {
+			$("#slider-range").show();
+			stopStream();
+		}
+		$("#play").attr("checked", false).change();
+	});
+	$("#tblview, #wfview, #atview, #nwview").change(function() {
+		if ($("#tblview").is(":checked")) {
+			$("#dashboard").show();
+			$("#waterfall_zoom").hide();
+			$("#wifitable").hide();
+			$("#utilization").hide();
+		} else if ($("#wfview").is(":checked")) {
+			$("#waterfall_zoom").show();
+			$("#wifitable").hide();
+			$("#utilization").hide();
+			$("#dashboard").hide();
+		} else if ($("#atview").is(":checked")) {
+			$("#utilization").show();
+			$("#wifitable").hide();
+			$("#waterfall_zoom").hide();
+			$("#dashboard").hide();
+		} else if ($("#nwview").is(":checked")) {
+			$("#wifitable").show();
+			$("#utilization").hide();
+			$("#waterfall_zoom").hide();
+			$("#dashboard").hide();
+		}
+	});
+	$( "#slider-range" ).slider({
+			orientation: "vertical",
+			value: 0,
+			min: -2000,
+			max: 0,
+			slide: function( e, ui ) {
+				//$( "#amount" ).val( "$" + ui.values[ 0 ] + " - $" + ui.values[ 1 ] );
+				replayIndex = -$(this).slider("option", "value");
+			},
+			start: function(e, ui) {
+				if ($("#stream").is(":checked")) {
+					pauseReplay();
+					tempPause = true;
+				}
+			},
+			stop: function(e, ui) {
+				if (tempPause) replay();
+				tempPause = false;
+			}
+		});
+
+});
+
+var tempPause = false;
+
+google.load('visualization', '1', {packages: ['controls']});
+      google.setOnLoadCallback(drawVisualization);
+
+		var drawn = 0;
+		var data;
+
+      function drawVisualization(deviceData) {
+		if(!drawn)
+		{
+			data = new google.visualization.DataTable();
+			data.addColumn('string', 'Serial');
+			data.addColumn('string', 'Device');
+			data.addColumn('string', 'Start');
+			data.addColumn('string', 'End');
+			data.addColumn('string', 'Duration');
+			data.addColumn('string', 'Sig Str');
+			data.addColumn('string', 'Sub Band Freq');
+			data.addColumn('string', 'Freq Range');
+		}
+			var i = data.getNumberOfRows();
+			var j = 0;
+
+			while(j < deviceData.dev.length)
+			{
+				data.addRows(1);
+				data.setCell(i, 0, deviceData.dev[j].toString());
+				data.setCell(i, 1, deviceData.dev[j + 1].toString());
+				data.setCell(i, 2, deviceData.dev[j + 2].toString());
+				data.setCell(i, 3, deviceData.dev[j + 3].toString());
+				data.setCell(i, 4, deviceData.dev[j + 4].toString());
+				data.setCell(i, 5, deviceData.dev[j + 5].toString());
+				data.setCell(i, 6, deviceData.dev[j + 6].toString());
+				data.setCell(i, 7, deviceData.dev[j + 7].toString());
+				i++;
+				j = j + 8;
+			}
+
+		  // Define a StringFilter control for the 'Serial' column
+		  var serialFilter = new google.visualization.ControlWrapper({
+			'controlType': 'StringFilter',
+			'containerId': 'serialFilter',
+			'options': {
+			  'filterColumnLabel': 'Serial'
+			}
+		  });
+		  
+		  // Define a table visualization
+		  var table = new google.visualization.ChartWrapper({
+			'chartType': 'Table',
+			'containerId': 'table',
+			'options':
+				{
+					'width' : 620,
+					'page' : 'enable',
+					'pageSize' : 15
+				}
+		  });
+		  
+		  // Create the dashboard.
+		  var dashboard = new google.visualization.Dashboard(document.getElementById('dashboard')).
+			// Configure the string filter to affect the table contents
+			bind(serialFilter, table).
+			// Draw the dashboard
+			draw(data);
+	
+			drawn = 1;
+			
+			// Define a StringFilter control for the 'Serial' column
+		  var serialFilter = new google.visualization.ControlWrapper({
+			'controlType': 'StringFilter',
+			'containerId': 'serialFilter',
+			'options': {
+			  'filterColumnLabel': 'Serial',
+			},
+		  });
+
+		serialFilter.setState(serialFilterState);
+
+		  // Define a StringFilter control for the 'Device' column
+		  var serialFilter = new google.visualization.ControlWrapper({
+			'controlType': 'StringFilter',
+			'containerId': 'serialFilter',
+			'options': {
+			  'filterColumnLabel': 'Device',
+			},
+		  });
+
+		serialFilter.setState(serialFilterState);	
+
+		  // Define a table visualization
+		  var table = new google.visualization.ChartWrapper({
+			'chartType': 'Table',
+			'containerId': 'table',
+			'options':
+				{
+					'width' : 620,
+					'page' : 'enable',
+					'pageSize' : 15,
+					'sortAscending' : tableSortAscending,
+					'sortColumn' : tableSortColumn,
+					'startPage' : tablePage
+				}
+		  });
+
+
+
+		  // Create the dashboard.
+		  var dashboard = new google.visualization.Dashboard(document.getElementById('dashboard')).
+			// Configure the string filter to affect the table contents
+			bind(serialFilter, table).
+			// Draw the dashboard
+			draw(data);
+	
+			drawn = 1;
+
+			var readyListener = google.visualization.events.addListener(table, 'ready', onReady);
+
+			google.visualization.events.addListener(serialFilter, 'statechange', 					serialHandler);
+
+function serialHandler(e)
+			{
+				serialFilterState = serialFilter.getState();
+			}
+
+			function onReady() {
+			  google.visualization.events.removeListener(readyListener);
+			  google.visualization.events.addListener(table.getChart(), 'sort', sortHandler);
+			  google.visualization.events.addListener(table.getChart(), 'page', pageHandler); 
+			}
+
+			function sortHandler(e)
+			{
+				tableSortAscending = e.ascending;
+				tableSortColumn = e.column;
+			}
+
+			function pageHandler(e)
+			{
+				tablePage = e.page;
+			}
+		}
+
+	//utilization chart
+	google.load("visualization", "1", {packages:["corechart"]});
+    google.setOnLoadCallback(drawUtil);
+
+	var utilChartData;
+	
+	function drawUtil(utilData) {
+		if(utilData !== undefined && utilData.util !== undefined)
+		{
+			utilChartData = google.visualization.arrayToDataTable([
+			  ['Channel', 'WiFi', 'Non-WiFi'],
+			  ['1',  utilData.util[0], utilData.util[1]],
+			  ['2',  utilData.util[2], utilData.util[3]],
+			  ['3',  utilData.util[4], utilData.util[5]],
+			  ['4',  utilData.util[6], utilData.util[7]],
+			  ['5',  utilData.util[8], utilData.util[9]],
+			  ['6',  utilData.util[10], utilData.util[11]],
+			  ['7',  utilData.util[12], utilData.util[13]],
+			  ['8',  utilData.util[14], utilData.util[15]],
+			  ['9',  utilData.util[16], utilData.util[17]],
+			  ['10',  utilData.util[18], utilData.util[19]],
+			  ['11',  utilData.util[20], utilData.util[21]],
+			  ['12',  utilData.util[22], utilData.util[23]],
+			]);
+
+        var options = {
+          title: 'Airtime Utilization',
+          hAxis: {title: 'Wi-Fi Channel', titleTextStyle: {color: 'red'}},
+		  vAxis: {title: 'Utilization (%)', titleTextStyle: {color: 'red'}, 
+					minvalue: 0, maxValue: 100},
+		  width: 630,
+		  height: 510
+        };
+        
+         var chart = new google.visualization.ColumnChart(document.getElementById('utilization'));
+        chart.draw(utilChartData, options);
+		}
+      }
+
+      google.load('visualization', '1', {packages:['table']});
+      google.setOnLoadCallback(drawTable);
+
+	var wfdata;
+	var wfDrawn = 0;
+
+      function drawTable(wifiData) {
+			if(!wfDrawn){
+				wfdata = new google.visualization.DataTable();
+				wfdata.addColumn('string', 'SSID');
+				wfdata.addColumn('string', 'Mac Address');
+				wfdata.addColumn('string', 'Channel');
+				wfdata.addColumn('string', 'Signal Strength');
+			}
+			if(wifiData !== undefined && wifiData.data !== undefined)
+			{
+				wfdata.addRows([[wifiData.data[0].toString(), wifiData.data[1].toString(), 						wifiData.data[2].toString(), wifiData.data[3].toString()]]);
+
+			var options = {
+				showRowNumber: true,
+				width: 630,
+				height: 510
+			  };
+
+				var table = new google.visualization.Table(document.getElementById('wifitable'));
+				table.draw(wfdata, options);
+				wfDrawn = 1;
+      		}
+		}
+
+</script>
+</head>
+
+<body>
+<div id="wrapper">
+<div id="toolbar" class="ui-widget-header ui-corner-all" style="padding: 3px; padding-bottom: 0px; font-size: 10pt;">
+<h1>AirShark</h1>
+<div style="float: left; width: 320px;">
+<input type="checkbox" name="play" id="play" /><label for="play">play</label>
+<span id="source" style="display: inline-block;">
+<input type="radio" name="source" id="stream" checked="checked" /><label for="stream">Stream</label>
+<input type="radio" name="source" id="replay" /><label for="replay">Replay</label>
+</span>
+</div>
+<span id="view" style="display: inline-block;">
+<input type="radio" name="view" id="tblview" checked="checked" /><label for="tblview">Devices</label>
+<input type="radio" name="view" id="atview" /><label for="atview">Airtime</label>
+<input type="radio" name="view" id="nwview" /><label for="nwview">Networks</label>
+<input type="radio" name="view" id="wfview" /><label for="wfview">Waterfall</label>
+</span>
+</div>
+<div id="leftcol" style="float: left; margin-right: 10px; width: 310px;">
+<span id="slider-range"></span>
+<canvas id="waterfall" width="284" height="500"></canvas>
+</div>
+<div id="maincol">
+  <div id="dashboard" style="height:510px;">
+      <table>
+        <tr style='vertical-align: top'>
+          <td style='width: 620px'>
+            <div style="float: left;" id="table"></div>
+          </td>
+        </tr>
+		<tr>
+          <td style='width: 300px; font-size: 0.9em;'>
+            <div id="serialFilter"></div>
+          </td>
+		</tr>
+      </table>
+    </div>
+    <div id="utilization" style="width: 620px; height: 510px; display: none; float: left;"></div>
+	<div id='wifitable' style="width: 620px; height: 510px; display: none; float: left;"></div>
+    <div id="waterfall_zoom" style="display:none">
+<canvas id="bar" width="620" height="150"></canvas>
+<canvas id="zoom" width="620" height="300"></canvas>
+<div class="legend">
+<span style="background-color: rgb(0,14,0)"><span>-120dBm</span></span>
+<span style="background-color: rgb(0,54,0)"><span>-100dBm</span></span>
+<span style="background-color: rgb(0,94,0)"><span>-80dBm</span></span>
+<span style="background-color: rgb(0,134,0)"><span>-60dBm</span></span>
+<span style="background-color: rgb(0,174,0)"><span>-40dBm</span></span>
+<span style="background-color: rgb(0,214,0)"><span>-20dBm</span></span>
+<span style="background-color: rgb(0,254,0)"><span>0dBm</span></span>
+</div>
+</div>
+</div>
+<hr style="clear: both; height: 0px; visibility: hidden; margin: 0px; border: none;" />
+</div>
+<script type="text/javascript">
+  // Initialization: Draw the labels and such here
+  var canvas = document.getElementById('waterfall');
+  var bar = document.getElementById('bar');
+  var zoom = document.getElementById('zoom');
+  if (canvas.getContext && bar.getContext && zoom.getContext) {  
+    var ctx = canvas.getContext('2d');
+    var ctx2 = bar.getContext('2d');
+    var ctx3 = zoom.getContext('2d');
+    ctx.font = "8pt Arial";
+
+    ctx2.textAlign = "center";
+    ctx2.font = "12pt Arial";
+    ctx2.fillStyle = "rgb(191,191,191)";
+    for(i=1;i<=11;i++)
+    	ctx2.fillText(i*5,i*50-5,149);
+    ctx2.textAlign = "left";
+    ctx2.font = "8pt Arial";
+    for(i=0; i<127;i+=20) {
+		ctx2.fillText("-"+i+" dBm",560,i+10);
+    }
+    ctx3.fillStyle = "rgb(191,0,0)";
+    ctx3.fillRect(562,0,2,300);
+//    init();
+  }
+</script></body>
+
+</html>

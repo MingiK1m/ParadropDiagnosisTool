@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta content="text/html; charset=utf-8" http-equiv="Content-Type">
+<title>AirShark</title>
+
+<link rel="stylesheet" href="style2.css" />
+<script type="text/javascript" src="js/jquery-1.7.1.min.js"></script>
+<script type='text/javascript' src='https://www.google.com/jsapi'></script>
+
+<script type="text/javascript">
+// Global variables
+var utilChartData;
+var utilOptions;
+var utilChart;
+var wfdata;
+var wfOptions;
+var wfTable;
+var table;
+var devOptions;
+var data;
+var river;
+var waves;
+var waterfall;
+
+var textFormat = {color: 'white'}
+
+var lastData = 0;
+var time_count = 14;
+var frameData = new Array();
+var fCount = 0;
+var fIndex = 0;
+</script>
+
+<script type="text/javascript" src="charts.js"></script>
+
+<script type="text/javascript">
+var source;
+
+// Start streaming data from the server and parse data as it arrives.
+function init() {
+	if (!!window.EventSource) {
+		// Stream new data from the server
+		source = new EventSource('sse2.php?live');
+		
+		// When new data is received... display it
+		// Waterfall
+		source.addEventListener('channel', function(e) {
+			var data = JSON.parse(e.data);
+			drawRiver(data);
+			drawWaterfall(data);
+			drawWaves(data);
+		}, false);
+		
+		// Devices
+		source.addEventListener('devices', function(e) {
+			var deviceData = JSON.parse(e.data);
+			drawVisualization(deviceData);
+		}, false);
+		
+		// Airtime
+		source.addEventListener('utilization', function(e) {
+			var utilData = JSON.parse(e.data);
+			drawUtil(utilData);
+		}, false);
+
+		// Networks
+		source.addEventListener('wifi', function(e) {
+			var wifiTableData = JSON.parse(e.data);
+			drawTable(wifiTableData);
+		}, false);
+	}
+}
+
+// Stop streaming data.
+function stopStream() {
+	source.close();
+}
+
+// Toggle streaming data
+function play() {
+	if ($("#play").is(":checked"))
+		init();
+	else
+		stopStream();
+}
+
+// When the page is resized, redraw stuff as needed
+function resizeWindow() {
+	redrawAirtime();
+	redrawDevices();
+	redrawNetworks();
+	redrawWaterfall();
+}
+
+// This block of code runs after the page is fully loaded.
+$(document).ready(function() {
+	// Show initial view
+	$("#maincol > div").hide();
+	$("#" + $("#views input:checked").val()).show();
+		
+	// Handle view changes
+	$("#views input").change(function() {
+		$("#maincol > div").hide();
+		$("#" + $(this).val()).show();
+		resizeWindow();
+	});
+	
+	// Handle source changes
+	$("#source input").change(function() {
+		if ($("#play").is(":checked")) {
+			$("#play").attr("checked", false);
+			stopStream();
+		}
+	});
+});
+
+// Load the neccessary Google chart code
+google.load("visualization", "1", {packages:["corechart", "table", "controls"]});
+google.setOnLoadCallback(initCharts);
+
+// Initialize the charts once.
+// This function is run immediately after the Google initialization is complete.
+// It it safe to assume that no real data is available at this point.
+function initCharts() {
+	initAirtime();
+	initDevices(); 
+	initNetworks();
+	initWaterfall();
+
+	// Draw everything once
+	resizeWindow();
+}
+</script>
+</head>
+
+<body onresize="resizeWindow()">
+<div id="toolbar">
+<h1>AirShark</h1>
+<!-- Each toggle in the menu is an input immediately followed by its label.
+	 Do not put whitespace between two toggles in a group.
+	 Wrap each group of toggles in a span tag. -->
+<span class="left">
+	<input type="checkbox" id="play" onchange="play();" /><label for="play">Play</label>
+</span>
+<span id="source" class="left">
+	<input type="radio" id="stream" name="source" value="stream" checked="checked" /><label for="stream">Stream</label><input type="radio" id="replay" name="source" value="replay" /><label for="replay">Replay</label>
+</span>
+<span id="views">
+	<input type="radio" id="airtime" name="view" value="utilpanel" checked="checked" /><label for="airtime">Airtime</label><input type="radio" id="devices" name="view" value="devpanel" /><label for="devices">Devices</label><input type="radio" id="networks" name="view" value="netpanel" /><label for="networks">Networks</label><input type="radio" id="waterfall" name="view" value="wfpanel" /><label for="waterfall">Waterfall</label>
+</span>
+</div>
+
+<div id="content">
+<div id="leftcol">
+	<div id="splitter"></div>
+	<canvas id="river"></canvas>
+</div>
+
+<div id="maincol">
+<!-- Each view is a div tag. The value of the toggle in #views should be set to the view's ID.
+	 Each view should begin with a div tag containing the main content and end with a .viewctl.
+	 The .viewctl holds user controls related to the particular view. -->
+	<div id="utilpanel" style="display: block;">
+		<div id="utilization">Airtime</div>
+		<div class="labels viewctl">
+			<span style="background-color: rgb(220,57,18)"></span>Non-WiFi
+			<span style="background-color: rgb(51,102,204)"></span>Wi-Fi
+		</div>
+	</div>
+	<div id="devpanel">
+		<div id="devgtable" class="scroll">Devices</div>
+		<div class="viewctl">Filter by <input type="text" id="serialFilter" placeholder="Serial #" />, <input type="text" id="deviceFilter" placeholder="Device type" /></div>
+	</div>
+	<div id="netpanel">
+		<div id="wifitable" class="scroll">Networks</div>
+		<div class="viewctl">Filter by <input type="text" id="ssidFilter" placeholder="SSID" /></div>
+	</div>
+	<div id="wfpanel">
+		<div id="wfplot">
+			<canvas id="waves"></canvas>
+			<canvas id="wfchart"></canvas>
+		</div>
+		<div class="legend viewctl">
+			<!--
+			<span style="background-color: rgb(0,14,0)"><span>-120dBm</span></span>
+			<span style="background-color: rgb(0,54,0)"><span>-100dBm</span></span>
+			<span style="background-color: rgb(0,94,0)"><span>-80dBm</span></span>
+			<span style="background-color: rgb(0,134,0)"><span>-60dBm</span></span>
+			<span style="background-color: rgb(0,174,0)"><span>-40dBm</span></span>
+			<span style="background-color: rgb(0,214,0)"><span>-50dBm</span></span>
+			<span style="background-color: rgb(0,254,0)"><span>-30dBm</span></span>
+			-->
+			<img src="images/colorscale.png" alt="Green (-110 to -75), Yellow (-75 to -55), Red (-55 to -30)" />
+		</div>
+	</div>
+</div>
+</div>
+</body>
+</html>
