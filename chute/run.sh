@@ -8,7 +8,6 @@
 # results.  You can do that directly from this bash script or call another
 # program that you write (e.g. in Python).
 
-/usr/local/bin/a.out
 while true; do
     # DO nothing
     sleep(10);
