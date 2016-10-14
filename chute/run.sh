@@ -8,7 +8,7 @@
 # results.  You can do that directly from this bash script or call another
 # program that you write (e.g. in Python).
 
-a.out
+/usr/local/bin/a.out
 
 # If execution reaches this point, the chute will stop running.
 exit 0
