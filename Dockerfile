@@ -15,7 +15,7 @@ RUN apt-get update && apt-get install -y \
 # ADD <path_inside_repository> <path_inside_container>
 #
 ADD chute/webpage/html/ /var/www/html
-ADD chute/webpage/a.out /usr/local/bin/a.out
+#ADD chute/webpage/a.out /usr/local/bin/a.out
 ADD chute/run.sh /usr/local/bin/run.sh
 
 # Make the web server's port available outside the container.  We will also
@@ -23,7 +23,7 @@ ADD chute/run.sh /usr/local/bin/run.sh
 #
 # EXPOSE <port_inside_container>
 #
-EXPOSE 80
+EXPOSE 8100
 
 # This is the command that will be run inside the container.  It can be a bash
 # script that runs other commands, a python script, a compiled binary, etc.
